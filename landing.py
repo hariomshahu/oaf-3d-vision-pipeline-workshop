@@ -11,7 +11,7 @@
 # contains materials for an 8-week workshop series that will introduce you to the
 # fascinating world of 3D computer vision. Whether you're a beginner or have some
 # programming experience, this course will help you understand and implement key
-# concepts in 3D vision.
+# concepts in 3D vision..
 #
 # ## Deliverables
 #

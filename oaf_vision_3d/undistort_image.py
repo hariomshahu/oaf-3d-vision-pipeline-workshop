@@ -37,7 +37,7 @@ def undistort_image_with_new_camera_matrix(
 
     # Apply distortion to find where these points would be in distorted space
     distorted_normalized_pixels = lens_model.distort_pixels(
-        normalized_pixels=normalized_pixels
+        normalized_pixels=normalized_pixels.astype(np.float32)
     )
 
     # Convert back to pixel coordinates in the original image using original camera matrix

@@ -58,7 +58,7 @@ def plane_sweeping(
     secondary_transformation_matrices: list[TransformationMatrix],
     depth_range: NDArray[Shape["2"], Float32],
     step_size: float,
-    block_size: NDArray[Shape["[x, y]"], Int32],
+    block_size: int,
     subpixel_fit: bool = True,
 ) -> NDArray[Shape["H, W, 3"], Float32]:
 
@@ -116,8 +116,10 @@ def plane_sweeping(
 
         # Apply block matching (convolution for smoothing)
         convoluted_error = convolve2d(
-            convolve2d(averaged_error, np.ones((1, bx)) / bx, mode="same"),
-            np.ones((by, 1)) / by,
+            convolve2d(
+                averaged_error, np.ones((1, block_size)) / block_size, mode="same"
+            ),
+            np.ones((block_size, 1)) / block_size,
             mode="same",
         )
         total_error.append(convoluted_error)

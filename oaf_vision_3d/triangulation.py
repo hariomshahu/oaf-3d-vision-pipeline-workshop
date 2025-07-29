@@ -15,11 +15,53 @@ from oaf_vision_3d.lens_model import LensModel
 from oaf_vision_3d.transformation_matrix import TransformationMatrix
 
 
-def triangulate_points(  # type: ignore
+# def triangulate_points(  # type: ignore
+#     undistorted_normalized_pixels_0: NDArray[Shape["H, W, 2"], Float32],
+#     undistorted_normalized_pixels_1: NDArray[Shape["H, W, 2"], Float32],
+#     transformation_matrix: TransformationMatrix,
+# ) -> NDArray[Shape["H, W, 3"], Float32]: ...
+
+
+def triangulate_points(
     undistorted_normalized_pixels_0: NDArray[Shape["H, W, 2"], Float32],
     undistorted_normalized_pixels_1: NDArray[Shape["H, W, 2"], Float32],
     transformation_matrix: TransformationMatrix,
-) -> NDArray[Shape["H, W, 3"], Float32]: ...
+) -> NDArray[Shape["H, W, 3"], Float32]:
+    
+    # Create camera vectors (add z=1 to make them 3D)
+    v0 = np.pad(undistorted_normalized_pixels_0, ((0, 0), (0, 0), (0, 1)), constant_values=1.0)
+    u1 = np.pad(undistorted_normalized_pixels_1, ((0, 0), (0, 0), (0, 1)), constant_values=1.0)
+    
+    # Transform v1 using the transformation matrix
+    v1 = transformation_matrix.rotate(u1)
+    
+    # Camera positions
+    P0 = np.zeros(3, dtype=np.float32)  # Camera 0 at origin
+    P1 = transformation_matrix.translation  # Camera 1 position
+    
+    # Calculate dot products
+    a = np.sum(v0 * v0, axis=-1)  # v0 · v0
+    b = np.sum(v0 * v1, axis=-1)  # v0 · v1  
+    c = np.sum(v1 * v1, axis=-1)  # v1 · v1
+    
+    # Calculate (P1 - P0)
+    P1_minus_P0 = P1 - P0  # This is just P1 since P0 is at origin
+    
+    d = np.sum(v0 * P1_minus_P0[None, None, :], axis=-1)  # v0 · (P1 - P0)
+    e = np.sum(v1 * P1_minus_P0[None, None, :], axis=-1)  # v1 · (P1 - P0)
+    
+    # Solve for t using the formula: t = (be - cd) / (b² - ac)
+    denominator = b * b - a * c
+    
+    # Avoid division by zero
+    denominator = np.where(np.abs(denominator) < 1e-8, np.nan, denominator)
+    
+    t = (b * e - c * d) / denominator
+    
+    # Calculate 3D point: P = P0 + t * v0 = t * v0 (since P0 is at origin)
+    points_3d = v0 * t[..., None]
+    
+    return points_3d
 
 
 def triangulate_disparity(

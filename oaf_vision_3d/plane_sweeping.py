@@ -9,7 +9,7 @@
 # %%
 
 import numpy as np
-from nptyping import Float32, Int32, NDArray, Shape
+from nptyping import Float32, NDArray, Shape
 from scipy.ndimage import map_coordinates
 from scipy.signal import convolve2d
 
@@ -107,12 +107,6 @@ def plane_sweeping(
             averaged_error = np.stack(depth_errors).mean(axis=0)
         else:
             averaged_error = depth_errors[0]
-
-        # Handle block_size as either int or array
-        if isinstance(block_size, int):
-            bx, by = block_size, block_size
-        else:
-            bx, by = block_size[0], block_size[1]
 
         # Apply block matching (convolution for smoothing)
         convoluted_error = convolve2d(

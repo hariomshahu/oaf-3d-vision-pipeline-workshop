@@ -9,7 +9,7 @@
 # %%
 
 import numpy as np
-from nptyping import Float32, NDArray, Shape
+from nptyping import Float32, Int32, NDArray, Shape
 from scipy.ndimage import map_coordinates
 from scipy.signal import convolve2d
 
@@ -58,7 +58,7 @@ def plane_sweeping(
     secondary_transformation_matrices: list[TransformationMatrix],
     depth_range: NDArray[Shape["2"], Float32],
     step_size: float,
-    block_size: int,
+    block_size: NDArray[Shape["[x, y]"], Int32],
     subpixel_fit: bool = True,
 ) -> NDArray[Shape["H, W, 3"], Float32]:
 
@@ -108,13 +108,16 @@ def plane_sweeping(
         else:
             averaged_error = depth_errors[0]
 
-        # Apply block matching (convolution for smoothing)
+        # Handle block_size as either int or array
+        if isinstance(block_size, int):
+            bx, by = block_size, block_size
+        else:
+            bx, by = block_size[0], block_size[1]
 
+        # Apply block matching (convolution for smoothing)
         convoluted_error = convolve2d(
-            convolve2d(
-                averaged_error, np.ones((1, block_size)) / block_size, mode="same"
-            ),
-            np.ones((block_size, 1)) / block_size,
+            convolve2d(averaged_error, np.ones((1, bx)) / bx, mode="same"),
+            np.ones((by, 1)) / by,
             mode="same",
         )
         total_error.append(convoluted_error)

@@ -11,10 +11,8 @@
 import numpy as np
 from nptyping import Float32, NDArray, Shape
 from scipy.ndimage import map_coordinates
-from scipy.signal import convolve2d
 
 from oaf_vision_3d.lens_model import LensModel
-from oaf_vision_3d.poly_2_subvalue_fit import find_subvalue_poly_2
 from oaf_vision_3d.project_points import project_points
 from oaf_vision_3d.transformation_matrix import TransformationMatrix
 
@@ -48,6 +46,7 @@ def repeoject_image_at_depth(
         axis=-1,
         dtype=np.float32,
     )
+
 
 def plane_sweeping(  # type: ignore
     image: NDArray[Shape["H, W, ..."], Float32],

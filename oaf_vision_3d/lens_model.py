@@ -171,11 +171,93 @@ class DistortionCoefficients:
         )
 
 
+# def _distort_pixels(
+#     normalized_pixels: NDArray[Shape["H, W, 2"], Float32],
+#     distortion_coefficients: DistortionCoefficients,
+# ) -> NDArray[Shape["H, W, 2"], Float32]:
+#     return normalized_pixels
+
+
 def _distort_pixels(
     normalized_pixels: NDArray[Shape["H, W, 2"], Float32],
     distortion_coefficients: DistortionCoefficients,
 ) -> NDArray[Shape["H, W, 2"], Float32]:
-    return normalized_pixels
+    x = normalized_pixels[..., 0]
+    y = normalized_pixels[..., 1]
+
+    # Calculate r^2, r^4, r^6
+    r2 = x**2 + y**2
+    r4 = r2 * r2
+    r6 = r4 * r2
+
+    # Radial distortion coefficient
+    radial_coeff = (
+        1
+        + distortion_coefficients.k1 * r2
+        + distortion_coefficients.k2 * r4
+        + distortion_coefficients.k3 * r6
+    ) / (
+        1
+        + distortion_coefficients.k4 * r2
+        + distortion_coefficients.k5 * r4
+        + distortion_coefficients.k6 * r6
+    )
+
+    # Apply radial distortion
+    x_radial = x * radial_coeff
+    y_radial = y * radial_coeff
+
+    # Tangential distortion
+    xy2 = 2 * x * y
+    r2_2x2 = r2 + 2 * x**2
+    r2_2y2 = r2 + 2 * y**2
+
+    x_tangential = (
+        distortion_coefficients.p1 * xy2 + distortion_coefficients.p2 * r2_2x2
+    )
+    y_tangential = (
+        distortion_coefficients.p2 * xy2 + distortion_coefficients.p1 * r2_2y2
+    )
+
+    # Thin prism distortion
+    x_prism = distortion_coefficients.s1 * r2 + distortion_coefficients.s2 * r4
+    y_prism = distortion_coefficients.s3 * r2 + distortion_coefficients.s4 * r4
+
+    # Combine all distortions (before tilt)
+    x_distorted = x_radial + x_tangential + x_prism
+    y_distorted = y_radial + y_tangential + y_prism
+
+    # Tilt distortion (if tau_x or tau_y are non-zero)
+    if distortion_coefficients.tau_x != 0 or distortion_coefficients.tau_y != 0:
+        tilt_matrix = np.array(
+            [
+                [np.cos(distortion_coefficients.tau_x), 0.0, 0.0],
+                [
+                    -np.sin(distortion_coefficients.tau_x)
+                    * np.sin(distortion_coefficients.tau_y),
+                    np.cos(distortion_coefficients.tau_y),
+                    0.0,
+                ],
+                [
+                    np.sin(distortion_coefficients.tau_y),
+                    -np.sin(distortion_coefficients.tau_x)
+                    * np.cos(distortion_coefficients.tau_y),
+                    np.cos(distortion_coefficients.tau_x)
+                    * np.cos(distortion_coefficients.tau_y),
+                ],
+            ],
+            dtype=np.float32,
+        )
+
+        # Apply tilt transformation
+        distorted_homogeneous = np.stack(
+            [x_distorted, y_distorted, np.ones_like(x_distorted)], axis=-1
+        )
+        transformed = distorted_homogeneous @ tilt_matrix.T
+        x_distorted = transformed[..., 0] / transformed[..., 2]
+        y_distorted = transformed[..., 1] / transformed[..., 2]
+
+    return np.stack([x_distorted, y_distorted], axis=-1)
 
 
 def _undistort_pixels(
